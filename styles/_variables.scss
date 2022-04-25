@@ -1,0 +1,36 @@
+$primary: #1ca0d0;
+$secondary: #98a5be;
+$info: #293878;
+$warning: #fd841a;
+$dark: #344538;
+$success: #69ca90;
+$danger: #f26085;
+
+$theme-colors: (
+  "primary": $primary,
+  "secondary": $secondary,
+  "warning": $warning,
+  "dark": $dark,
+  "info": $info,
+  "success": $success,
+  "danger": $danger,
+);
+$font-sizes: (
+  5: "16px",
+  6: "12px",
+);
+
+$form-label-font-size: 16px;
+$form-select-color: $info;
+$btn-border-radius: 8px;
+$input-border-radius: 8px;
+$input-border-color: #fff;
+$input-group-addon-border-color: #fff;
+$input-focus-box-shadow: none;
+$input-focus-border-color: unset;
+$btn-focus-box-shadow: none;
+$input-color: #fff;
+$input-font-size: 12px;
+$input-bg: transparent;
+$input-group-addon-bg: transparent;
+$input-placeholder-color: $secondary;
