@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { i18n, useTranslation } from 'next-i18next'
+import { useSelector, useDispatch } from "react-redux";
 import Lib from '../utils/_lib';
 import axios from 'axios';
 import Image from 'next/image'
@@ -38,16 +39,22 @@ const TradeHistory = (props) => {
   const [pllistsFilter, setPllistsFilter] = useState({})
   const [symbollist, setSymbollist] = useState([])
 
+  const dispatch = useDispatch()
+  const IDFA = useSelector(state => state.info.idfa)
+  const TOKEN = useSelector(state => state.info.token)
+
   // TODO: increase pagesize by sroll down
   // TODO: filter add date params
   // 历史交易列表
   const getDealTradelists = async (query) => {
     try {
       let params = {
-        service: 'deal.tradelists',
         ...query,
+        service: 'deal.tradelists',
+        idfa: IDFA
       }
-      let result = await (await axios.get('/api/cms', { params: params, headers: { token: Lib.getInfo().token } })).data
+      console.log('TOKEN', TOKEN);
+      let result = await (await axios.get('/api/cms', { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
       setDataList(result.data.list)
       // console.log('交易紀錄', result.data);
@@ -57,10 +64,11 @@ const TradeHistory = (props) => {
   const getDealOrderlists = async (query) => {
     try {
       let params = {
-        service: 'deal.orderlists',
         ...query,
+        service: 'deal.orderlists',
+        idfa: IDFA
       }
-      let result = await (await axios.get('/api/cms', { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get('/api/cms', { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
       setDataList(result.data.list)
       // console.log('委託紀錄', result.data);
@@ -70,10 +78,11 @@ const TradeHistory = (props) => {
   const getDealPllists = async (query) => {
     try {
       let params = {
-        service: 'deal.pllists',
         ...query,
+        service: 'deal.pllists',
+        idfa: IDFA
       }
-      let result = await (await axios.get('/api/cms', { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get('/api/cms', { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
       setDataList(result.data.list)
       // console.log('盈亏列表', result.data);
@@ -83,10 +92,11 @@ const TradeHistory = (props) => {
   const getDealBalancelists = async (query) => {
     try {
       let params = {
-        service: 'deal.balancelists',
         ...query,
+        service: 'deal.balancelists',
+        idfa: IDFA
       }
-      let result = await (await axios.get('/api/cms', { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get('/api/cms', { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
       setDataList(result.data.list)
       // console.log('额度记录', result.data);
@@ -96,9 +106,10 @@ const TradeHistory = (props) => {
   const getDealSymbollist = async () => {
     try {
       let params = {
-        service: 'deal.symbollist'
+        service: 'deal.symbollist',
+        idfa: IDFA
       }
-      let result = await (await axios.get('/api/cms', { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get('/api/cms', { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
       setSymbollist(result.data)
       // console.log('交易產品獲取', result);
@@ -212,10 +223,16 @@ const TradeHistory = (props) => {
   }
 
   useEffect(() => {
-    getDealTradelists({ starttime: getUnixTime(parseISO(new Date().toISOString().split('T')[0])) })
-    setNow(formatISO9075(new Date()))
-    getDealSymbollist()
-    clearFilter()
+    if (TOKEN !== '') {
+      getDealTradelists({ starttime: getUnixTime(parseISO(new Date().toISOString().split('T')[0])) })
+      setNow(formatISO9075(new Date()))
+      getDealSymbollist()
+      clearFilter()
+    }
+  }, [TOKEN])
+
+  useEffect(() => {
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
   }, [])
 
   return (

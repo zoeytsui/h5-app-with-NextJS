@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { i18n, useTranslation } from 'next-i18next'
+import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from 'next/router';
 import Navbar from '../components/navbar'
 import SuccessModal from '../components/successModal'
@@ -11,57 +12,6 @@ import Image from 'next/image'
 import { Html5Qrcode } from "html5-qrcode"
 import qrcodeicon from '../public/images/qrcodeicon.png'
 
-// 是否可以出金
-const withdrawpermission = async () => {
-  try {
-    let params = {
-      service: 'withdraw.withdrawpermission',
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 可用余额
-const getfee = async (amount) => {
-  try {
-    let params = {
-      service: 'withdraw.getfee',
-      amount: amount,
-      track: Lib.genTrack()
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 可用余额
-const getaw = async () => {
-  try {
-    let params = {
-      service: 'withdraw.getaw'
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 出金
-const withdrawIndex = async (amount) => {
-  try {
-    let params = {
-      service: 'withdraw.index',
-      amount: amount,
-      track: Lib.genTrack()
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
 const Withdraw = (props) => {
   const router = useRouter()
   const { t } = useTranslation()
@@ -77,6 +27,60 @@ const Withdraw = (props) => {
   const [submitBtnDisabled, setSubmitBtnDisabled] = useState(true)
   const [errorFeedback, setErrorFeedback] = useState('')
 
+  const dispatch = useDispatch()
+  const TOKEN = useSelector(state => state.info.token)
+
+  // 是否可以出金
+  const withdrawpermission = async () => {
+    try {
+      let params = {
+        service: 'withdraw.withdrawpermission',
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
+
+  // 手续费计算
+  const getfee = async (amount) => {
+    try {
+      let params = {
+        service: 'withdraw.getfee',
+        amount: amount,
+        track: Lib.genTrack()
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
+
+  // 可用余额
+  const getaw = async () => {
+    try {
+      let params = {
+        service: 'withdraw.getaw'
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
+
+  // 出金
+  const withdrawIndex = async (amount) => {
+    try {
+      let params = {
+        service: 'withdraw.index',
+        amount: amount,
+        track: Lib.genTrack()
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
   const onSubmit = async () => {
     console.log('amount', amount);
     console.log('addressRef', addressRef.current.value);
@@ -106,8 +110,6 @@ const Withdraw = (props) => {
 
   useEffect(() => {
     setActualAmount(amount - servicesCharge)
-    console.log('amount', amount);
-    console.log('address', address);
 
     amount > 0 && address !== '' && actualAmount > 0
       ? setSubmitBtnDisabled(false)
@@ -123,15 +125,21 @@ const Withdraw = (props) => {
 
   useEffect(() => {
     (async () => {
-      // 是否可以出金
-      let withdrawpermissionResult = await withdrawpermission()
-      if (withdrawpermissionResult.ret !== 200) return errorHandler('GTS2接口錯誤代碼' + withdrawpermissionResult.msg)
+      if (TOKEN !== '') {
+        // 是否可以出金
+        let withdrawpermissionResult = await withdrawpermission()
+        if (withdrawpermissionResult.ret !== 200) return errorHandler('GTS2接口錯誤代碼' + withdrawpermissionResult.msg)
 
-      // 可提餘額
-      let getawResult = await getaw()
-      if (getawResult.ret !== 200) return errorHandler('GTS2接口錯誤代碼' + withdrawIndexResult.msg)
-      setBalance(getawResult.data.GTS2)
+        // 可提餘額
+        let getawResult = await getaw()
+        if (getawResult.ret !== 200) return errorHandler('GTS2接口錯誤代碼' + withdrawIndexResult.msg)
+        setBalance(getawResult.data.GTS2)
+      }
     })()
+  }, [TOKEN])
+
+  useEffect(() => {
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
   }, [])
   return (
     <>
@@ -240,7 +248,10 @@ const TnCFromGts2 = () => {
     let link;
     switch (i18n.language) {
       case 'tc':
-        link = ''
+        link = 'https://chestbox.gts2cloud.com/public/ftp_upload/26/fo_document/withdrawal_TermsCondition_zh_TW.html'
+        break;
+      case 'vn':
+        link = 'https://chestbox.gts2cloud.com/public/ftp_upload/26/fo_document/withdrawal_TermsCondition_vi_VN.html'
         break;
       default:
         link = 'https://chestbox.gts2cloud.com/public/ftp_upload/26/fo_document/withdrawal_TermsCondition_en_US.html'

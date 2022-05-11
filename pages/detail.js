@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { useSelector, useDispatch } from "react-redux";
 import { useTranslation } from 'next-i18next'
 import { useRouter } from 'next/router';
 import Lib from '../utils/_lib';
@@ -7,26 +8,29 @@ import axios from 'axios';
 import Navbar from '../components/navbar'
 import NoData from '../components/noData';
 
-// 入金出金列表
-const getlist = async (query) => {
-  try {
-    let params = {
-      ...query,
-      pageNo: 1,
-      pageSize: 100
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
 const Deposit = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const page = new URLSearchParams(router.asPath.replace('/detail', '')).get('page')
 
   const [pageList, setPageList] = useState([])
+
+  const dispatch = useDispatch()
+  const TOKEN = useSelector(state => state.info.token)
+
+  // 入金出金列表
+  const getlist = async (query) => {
+    try {
+      let params = {
+        ...query,
+        pageNo: 1,
+        pageSize: 100
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
 
   const getPageList = async () => {
     let getListResult;
@@ -40,7 +44,12 @@ const Deposit = (props) => {
   }
 
   useEffect(() => {
-    getPageList()
+    if (TOKEN !== '') {
+      getPageList()
+    }
+  }, [TOKEN])
+  useEffect(() => {
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
   }, [])
 
   return (

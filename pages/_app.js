@@ -6,14 +6,20 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 import '../styles/globals.scss'
 import Layout from '../components/layout'
 
+import { wrapper, store } from '../redux/store';
+import { Provider } from "react-redux";
+
 function App({ Component, pageProps }) {
   return (
     <>
-      <Component {...pageProps} />
+      <Provider store={store}>
+        <Component {...pageProps} />
+      </Provider>
       <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossOrigin="anonymous" />
     </>
   )
-
 }
+// App.getInitialProps = wrapper.getInitialProps(store => ({ Component, ctx }))
 
-export default appWithTranslation(App)
+// export default appWithTranslation(App)
+export default appWithTranslation(wrapper.withRedux(App))

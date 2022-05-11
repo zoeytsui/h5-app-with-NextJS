@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next'
+import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from 'next/router';
 import Image from 'next/image'
 import axios from 'axios'
@@ -10,19 +11,6 @@ import SuccessModal from '../components/successModal';
 import Lib from '../utils/_lib'
 import success_register from '../public/images/success_register.svg'
 import ellipse_error from '../public/images/ellipse_error.png'
-
-// 驗證并重置密碼（忘記密碼時使用）
-const validateResetPwd = async (query) => {
-  try {
-    let params = {
-      ...query,
-      service: 'Members.validateResetPwd'
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
 
 // TODO: Remove nav left button
 const Reset = () => {
@@ -34,9 +22,7 @@ const Reset = () => {
   const [errorFeedback, setErrorFeedback] = useState('')
   const passwordRef = createRef()
   const password2Ref = createRef()
-
   const [disabled, setDisabled] = useState(true)
-
   const [passwordValidationChecked, setPasswordValidationChecked] = useState(false)
   const [passwordValidates, setPasswordValidates] = useState(
     [
@@ -46,7 +32,8 @@ const Reset = () => {
       { validate: '不可有特殊字符', isValid: false },
     ]
   );
-
+  const dispatch = useDispatch()
+  const IDFA = useSelector(state => state.info.idfa)
 
   const updateState = (requirement, isValid) => {
     let newVal = [...requirements];
@@ -57,7 +44,12 @@ const Reset = () => {
   const submitInput = async (e) => {
     e.preventDefault()
     if (password !== password2) return setErrorFeedback('密碼不相同')
-    let result = await validateResetPwd({ key: key, password: password })
+    let result = await Lib.fetchData_cms({
+      service: 'Members.validateResetPwd',
+      key: key,
+      password: password,
+      idfa: IDFA
+    })
     if (result.ret !== 200) return setErrorFeedback('客戶中心接口錯誤代碼' + result.ret)
     if (result.data === 'succeed') return Lib.showModal('SuccessModal')
   }
@@ -83,6 +75,10 @@ const Reset = () => {
     }
     Lib.validatePassword(password).every(i => i.isValid === true) && password2 !== '' ? setDisabled(false) : setDisabled(true)
   }, [password, password2])
+
+  useEffect(() => {
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
+  }, [])
 
   return (
     <div className='bg-blue text-white' style={{ height: '100vh' }}>

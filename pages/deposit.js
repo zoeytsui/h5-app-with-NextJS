@@ -1,27 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { i18n, useTranslation } from 'next-i18next'
+import { useSelector, useDispatch } from "react-redux";
 import { useRouter } from 'next/router'
 import Navbar from '../components/navbar'
 import Lib from '../utils/_lib';
 import axios from 'axios';
-
-// 入金
-const depositIndex = async (query) => {
-  try {
-    let params = {
-      ...query,
-      service: 'deposit.index',
-      display_type: 'm',
-      deal_type: 'USDT',
-      deposit_type: 'egpay',
-      track: Lib.genTrack()
-    }
-    let result = await (await axios.get('/api/tools', { params: params, headers: { token: Lib.getInfo().token } })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
 
 {/* FIXME: golen egg not supported yet */ }
 const DepositByAddress = () => {
@@ -60,13 +44,32 @@ const DepositByAddress = () => {
   )
 }
 
-const DepositByCurrency = ({ category }) => {
+const DepositByCurrency = ({ gateway }) => {
   const route = useRouter()
   const { t } = useTranslation()
   const [amount, setAmount] = useState('')
-  const [paySwitchSeqId, setPaySwitchSeqId] = useState(category[0].paySwitchSeqId)
   const [submitDepositBtnDisabled, setSubmitDepositBtnDisabled] = useState(true)
   const [getdlResultError, setGetdlResultError] = useState('')
+  const [paySwitchSeqId, setPaySwitchSeqId] = useState('')
+  const [gatewayList, setGatewayList] = useState([])
+  const TOKEN = useSelector(state => state.info.token)
+
+  // 入金
+  const depositIndex = async (query) => {
+    try {
+      let params = {
+        ...query,
+        service: 'deposit.index',
+        display_type: 'm',
+        deal_type: 'USDT',
+        deposit_type: 'egpay',
+        track: Lib.genTrack()
+      }
+      let result = await (await axios.get('/api/tools', { params: params, headers: { token: TOKEN } })).data
+      if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+      return result
+    } catch (error) { console.error(error) }
+  }
 
   const onSubmit = async () => {
     let getIpAddressResult = await (await axios.get('/api/getIpAddress')).data
@@ -106,6 +109,14 @@ const DepositByCurrency = ({ category }) => {
   }
 
   useEffect(() => {
+    if (gateway.length === 0) return;
+    if (gateway.ret === 200) {
+      setGatewayList(gateway.data.list)
+      setPaySwitchSeqId(gateway.data.list[0].paySwitchSeqId)
+    } else setGetdlResultError('GTS2接口錯誤代碼' + gateway.msg)
+  }, [gateway])
+
+  useEffect(() => {
     amount > 0
       ? setSubmitDepositBtnDisabled(false)
       : setSubmitDepositBtnDisabled(true)
@@ -139,8 +150,8 @@ const DepositByCurrency = ({ category }) => {
         <div className="hstack">
           <div>{t('類別')}</div>
           <div className="vr mx-2"></div>
-          <select className="form-select text-info fs-5 fw-bold text-end" aria-label="select category" onClick={(e) => setPaySwitchSeqId(e.target.value)}>
-            {category.map(type =>
+          <select className="form-select text-info fs-5 fw-bold text-end" aria-label="select gateway" onClick={(e) => setPaySwitchSeqId(e.target.value)}>
+            {gatewayList.map(type =>
               <option key={type.paySwitchSeqId} value={type.paySwitchSeqId}>{type.name}</option>
             )}
           </select>
@@ -173,6 +184,10 @@ const Deposit = (props) => {
   const [depositPermission, setDepositPermission] = useState(false)
   const [getdlResultError, setGetdlResultError] = useState('')
   const [order, setOrder] = useState('')
+  const [gateWay, setGateWay] = useState([])
+
+  const dispatch = useDispatch()
+  const TOKEN = useSelector(state => state.info.token)
 
   // TODO: do success or fail move
   const updateDepositStatus = async () => {
@@ -184,44 +199,6 @@ const Deposit = (props) => {
     Lib.setStorage('post_request', false)
   }
 
-  useEffect(() => {
-    if (Lib.getStorage('post_request') === 'true') return updateDepositStatus();
-
-    let depositpermissionResult = props.depositpermissionData
-    if (depositpermissionResult.ret === 200) {
-      setDepositPermission(true)
-    } else setGetdlResultError('GTS2接口錯誤代碼' + depositpermissionResult.msg)
-  }, [props])
-  return (
-    <>
-      <style jsx>{`
-        #error-feedback{
-          font-size: 16px;
-          color: #F2608C;
-        }`}</style>
-      <Navbar head={{ name: '入金 (充幣)', link: () => Lib.pushView(11) }} detail={() => router.push({ pathname: '/detail', query: { page: 'deposit' }, locale: router.locale })} className="bg-blue" />
-      <div className='container mt-2'>
-        <div className='d-flex'>
-          {/* TODO: remove disabled */}
-          <button disabled className={`col mx-1 btn ${activeTab === 'goldenegg' ? 'btn-light shadow-sm active' : 'btn-inactive'}`} onClick={() => setActiveTab('goldenegg')}>{t('入金地址')}</button>
-          <button className={`col mx-1 btn ${activeTab === 'egpay' ? 'btn-light shadow-sm active' : 'btn-inactive'}`} onClick={() => setActiveTab('egpay')}>{t('直接支付')}</button>
-        </div>
-        <div className='mt-2'>
-          {activeTab === 'goldenegg'
-            ? <DepositByAddress />
-            : <DepositByCurrency category={props.getdlData} />
-          }
-        </div>
-        <p className='text-center mt-4' id='error-feedback'>{t(getdlResultError)}</p>
-        {/* TODO: maybe have success modal */}
-        {/* <h1>{order}</h1> */}
-
-      </div>
-    </>
-  )
-}
-
-export const getServerSideProps = async ({ locale }) => {
   // 入金渠道
   const getdl = async () => {
     try {
@@ -240,9 +217,9 @@ export const getServerSideProps = async ({ locale }) => {
           params.lang = 'En'
           break;
       }
-      let result = await (await axios.get(`${process.env.NEXT_PUBLIC_API}/tools`, { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get(`/api/tools`, { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-      return result.data.list
+      return setGateWay(result)
     } catch (error) { console.error(error) }
   }
   // 是否可以入金
@@ -251,17 +228,61 @@ export const getServerSideProps = async ({ locale }) => {
       let params = {
         service: 'deposit.depositpermission',
       }
-      let result = await (await axios.get(`${process.env.NEXT_PUBLIC_API}/tools`, { params: params, headers: { token: Lib.getInfo().token } })).data
+      let result = await (await axios.get(`/api/tools`, { params: params, headers: { token: TOKEN } })).data
       if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
       return result
     } catch (error) { console.error(error) }
   }
 
+  useEffect(() => {
+    (async () => {
+      if (TOKEN !== '') {
+        let depositpermissionResult = await depositpermission()
+        if (depositpermissionResult.ret === 200) {
+          setDepositPermission(true)
+          getdl()
+        } else setGetdlResultError('GTS2接口錯誤代碼' + depositpermissionResult.msg)
+      }
+    })()
+  }, [TOKEN])
+
+  useEffect(() => {
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
+    if (Lib.getStorage('post_request') === 'true') updateDepositStatus()
+  }, [])
+  return (
+    <>
+      <style jsx>{`
+        #error-feedback{
+          font-size: 16px;
+          color: #F2608C;
+        }`}</style>
+      <Navbar head={{ name: '入金 (充幣)', link: () => Lib.pushView(11) }} detail={() => router.push({ pathname: '/detail', query: { page: 'deposit' }, locale: router.locale })} className="bg-blue" />
+      <div className='container mt-2'>
+        <div className='d-flex'>
+          {/* TODO: remove disabled */}
+          <button disabled className={`col mx-1 btn ${activeTab === 'goldenegg' ? 'btn-light shadow-sm active' : 'btn-inactive'}`} onClick={() => setActiveTab('goldenegg')}>{t('入金地址')}</button>
+          <button className={`col mx-1 btn ${activeTab === 'egpay' ? 'btn-light shadow-sm active' : 'btn-inactive'}`} onClick={() => setActiveTab('egpay')}>{t('直接支付')}</button>
+        </div>
+        <div className='mt-2'>
+          {activeTab === 'goldenegg'
+            ? <DepositByAddress />
+            : <DepositByCurrency gateway={gateWay} />
+          }
+        </div>
+        <p className='text-center mt-4' id='error-feedback'>{t(getdlResultError)}</p>
+        {/* TODO: maybe have success modal */}
+        {/* <h1>{order}</h1> */}
+
+      </div>
+    </>
+  )
+}
+
+export const getServerSideProps = async ({ locale }) => {
   return {
     props: {
-      ... await serverSideTranslations(locale),
-      getdlData: await getdl(),
-      depositpermissionData: await depositpermission()
+      ...await serverSideTranslations(locale),
     },
   }
 }

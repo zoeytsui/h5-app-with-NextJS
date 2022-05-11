@@ -1,59 +1,55 @@
 const md5 = require('md5');
+const axios = require('axios');
 
 const isMobileAccess = () => {
-  var sUserAgent = navigator.userAgent;
-  var mobileAgents = ['Windows CE', 'iPad', 'iPhone', 'iPod', 'Android', 'android', 'Windows Phone', 'Symbian', 'BlackBerry', 'Linux'];
-  for (var i = 0, len = mobileAgents.length; i < len; i++) {
-    if (sUserAgent.indexOf(mobileAgents[i]) !== -1) {
-      return true;
+  if (typeof window !== 'undefined') {
+    var sUserAgent = navigator.userAgent;
+    var mobileAgents = ['Windows CE', 'iPad', 'iPhone', 'iPod', 'Android', 'android', 'Windows Phone', 'Symbian', 'BlackBerry', 'Linux'];
+    for (var i = 0, len = mobileAgents.length; i < len; i++) {
+      if (sUserAgent.indexOf(mobileAgents[i]) !== -1) {
+        return true;
+      }
     }
+    return false;
   }
-  return false;
 }
 const sysPlatform = () => {
-  let isMobile = isMobileAccess(),
-    userAgent = navigator.userAgent.toLowerCase(),
-    sys = "";
+  if (typeof window !== 'undefined') {
+    let isMobile = isMobileAccess(),
+      userAgent = navigator.userAgent.toLowerCase(),
+      sys = "";
 
-  if (isMobile) {
-    //安卓
-    if (userAgent.match(/android/i)) {
-      sys = "android";
-    }
-    //苹果
-    if (userAgent.match(/(iphone|ipad|ipod|ios)/i)) {
-      sys = "ios";
-    }
-    //微信
-    if (userAgent.match(/MicroMessenger/i) == "micromessenger") {
-      sys = "weixin";
-    }
-    return sys;
-  } else return false;
+    if (isMobile) {
+      //安卓
+      if (userAgent.match(/android/i)) {
+        sys = "android";
+      }
+      //苹果
+      if (userAgent.match(/(iphone|ipad|ipod|ios)/i)) {
+        sys = "ios";
+      }
+      //微信
+      if (userAgent.match(/MicroMessenger/i) == "micromessenger") {
+        sys = "weixin";
+      }
+      return sys;
+    } else return false;
+  }
 }
 
 /**
  * Get token and idfa for api use
  */
 const getInfo = () => {
-  // getInfo() return sample:
-  // {"account":"61000027",
-  // "accountType":1,
-  // "channel":"google-play&utm_medium=organic",
-  // "firstLogin":false,
-  // "hasReal":true,
-  // "acountMember_type":"V",
-  // "idfa":"a531a5134306dff9",
-  // "token":"aac8f6b9f34fb557bd4ee03698a4fa73"}
-  let info = { token: 'cdb2f5dd5aca15c8a1225b32c210078d', idfa: 'idfa' }
-  if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return info
-  switch (sysPlatform()) {
-    case 'ios':
-      return info = window.webkit.messageHandlers.getInfo.postMessage()
-      break;
-    case 'android':
-      return info = uiObject.getInfo()
-      break;
+  if (typeof window !== 'undefined') {
+    let info = { token: 'cdb2f5dd5aca15c8a1225b32c210078d', idfa: 'idfa' }
+    if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return info
+    switch (sysPlatform()) {
+      case 'ios':
+        return info = window.webkit.messageHandlers.getInfo.postMessage()
+      case 'android':
+        return info = uiObject.getInfo()
+    }
   }
 }
 
@@ -66,12 +62,22 @@ const getInfo = () => {
  * 13、登入页(登入成功会跳转到入金页)
  */
 const pushView = (pageCode) => {
-  if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return;
-  if (sysPlatform() == 'ios') {
-    return window.webkit.messageHandlers.pushView.postMessage(pageCode)
-  } else {
-    return uiObject.pushView(pageCode)
+  if (typeof window !== 'undefined') {
+    if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return;
+    if (sysPlatform() == 'ios') {
+      return window.webkit.messageHandlers.pushView.postMessage(pageCode)
+    } else {
+      return uiObject.pushView(pageCode)
+    }
   }
+}
+
+const fetchData_cms = async (params) => {
+  try {
+    let result = await (await axios.get('/api/cms', { params: params })).data
+    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
+    return result
+  } catch (error) { console.error(error) }
 }
 
 
@@ -230,5 +236,6 @@ const Lib = {
   preventNumberSymbol,
   getInfo,
   pushView,
+  fetchData_cms,
 }
 export default Lib

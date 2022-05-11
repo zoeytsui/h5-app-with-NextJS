@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next'
+import { useSelector, useDispatch } from "react-redux";
 import Image from 'next/image'
 import axios from 'axios'
 import Navbar from '../components/navbar'
@@ -10,77 +11,6 @@ import Lib from '../utils/_lib'
 import Logo from '../public/images/logo.png'
 import success_register from '../public/images/success_register.svg'
 import ellipse_error from '../public/images/ellipse_error.png'
-
-// 檢查郵箱是否註冊
-const checkEmail = async (email) => {
-  try {
-    let params = {
-      service: 'Members.checkEmail',
-      email: email
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 註冊第一步
-const firstStage = async (email, password, captcha_img) => {
-  try {
-    let params = {
-      service: 'Members.firstStage',
-      email: email,
-      password: password,
-      captcha_img: captcha_img
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 註冊第二步
-const secondStage = async (email, password, code) => {
-  try {
-    let params = {
-      service: 'Members.secondStage',
-      email: email,
-      password: password,
-      code: code
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) { return console.error(`${result.ret}: ${result.msg}`) }
-    return result.data
-  } catch (error) { console.error(error) }
-}
-
-// 獲取郵箱驗證碼
-const getCodeByEmail = async (email, captcha_img) => {
-  try {
-    let params = {
-      service: 'Members.getCodeByEmail',
-      email: email,
-      captcha_img: captcha_img
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
-
-// 檢查郵箱驗證碼
-const verifyEmailCode = async (email, emailVerificationCode) => {
-  try {
-    let params = {
-      service: 'Members.verifyEmailCode',
-      email: email,
-      code: emailVerificationCode
-    }
-    let result = await (await axios.get('/api/cms', { params: params })).data
-    if (result.ret !== 200) console.error(`${result.ret}: ${result.msg}`)
-    return result
-  } catch (error) { console.error(error) }
-}
 
 // success modal
 const SuccessRegister = () => {
@@ -103,11 +33,6 @@ const SuccessRegister = () => {
   )
 }
 
-
-const handleSteps = (step) => {
-  ['StepOne', 'StepTwo'].map(x => document.getElementById(x).style.display = 'none')
-  document.getElementById(step).style.display = 'block'
-}
 
 const handleInvildState = (inputEleId, errorMsgEleId) => {
   let inputEle = document.getElementById(inputEleId),
@@ -167,11 +92,15 @@ const Register = (props) => {
   const [captcha, setCaptcha] = useState('')
   const captchaRef = useRef(<div />)
 
+  const dispatch = useDispatch()
+  const IDFA = useSelector(state => state.info.idfa)
+
   // 獲取圖片驗證碼
   const getCaptcha = async () => {
     try {
       let params = {
-        service: 'Members.getCaptchaImg'
+        service: 'Members.getCaptchaImg',
+        idfa: IDFA,
       }
       let result = await (await axios.get('/api/getCaptcha', { params: params })).data
       if (result.ret !== 200) return console.error(`${result.ret}: ${result.msg}`)
@@ -186,22 +115,50 @@ const Register = (props) => {
     )
   }
 
+  const handleSteps = (step) => {
+    ['StepOne', 'StepTwo'].map(x => document.getElementById(x).style.display = 'none')
+    document.getElementById(step).style.display = 'block'
+    if (step === 'StepTwo') setStartCountDown(true)
+  }
+
   const onSubmitStepTwo = async () => {
-    let verifyEmailCodeResult = await verifyEmailCode(email, emailVerificationCode)
+
+    let verifyEmailCodeResult = await Lib.fetchData_cms({
+      service: 'Members.verifyEmailCode',
+      email: email,
+      code: emailVerificationCode,
+      idfa: IDFA
+    })
+
     if (verifyEmailCodeResult.data !== 'succeed') {
       setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + verifyEmailCodeResult.ret }))
       handleInvildState('emailVerificationCode', 'errorMsg-emailVerificationCode')
       return setSubmitBtnDisabled(true)
     }
 
-    let isStepTwoSuccess = await secondStage(email, password, emailVerificationCode)
-    if (isStepTwoSuccess !== undefined) return Lib.showModal('SuccessRegister')
+    let isStepTwoSuccess = await Lib.fetchData_cms({
+      service: 'Members.secondStage',
+      email: email,
+      password: password,
+      code: emailVerificationCode,
+      idfa: IDFA
+    })
+    if (isStepTwoSuccess.ret !== 200) {
+      setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + verifyEmailCodeResult.ret }))
+      handleInvildState('emailVerificationCode', 'errorMsg-emailVerificationCode')
+      return setSubmitBtnDisabled(true)
+    } else return Lib.showModal('SuccessRegister')
   }
 
   // Send email verification code
   const sendEmailVerificationCode = async () => {
     setStartCountDown(true)
-    let getCodeByEmailResult = await getCodeByEmail(email, captcha)
+    let getCodeByEmailResult = await Lib.fetchData_cms({
+      service: 'Members.getCodeByEmail',
+      email: email,
+      captcha_img: captcha,
+      idfa: IDFA
+    })
     if (getCodeByEmailResult.ret !== 200) {
       setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + getCodeByEmailResult.ret }))
       handleInvildState('emailVerificationCode', 'errorMsg-emailVerificationCode')
@@ -218,7 +175,12 @@ const Register = (props) => {
     }
 
     // 檢查郵箱是否註冊
-    let checkEmailResult = await checkEmail(email)
+    let checkEmailResult = await Lib.fetchData_cms({
+      service: 'Members.checkEmail',
+      email: email,
+      idfa: IDFA
+    })
+
     // 若郵箱格式錯誤
     if (checkEmailResult.ret !== 200) {
       setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + checkEmailResult.ret }))
@@ -231,12 +193,24 @@ const Register = (props) => {
     }
 
     // Go step two
-    let isStepOneSuccess = await firstStage(email, password, captcha)
+    let isStepOneSuccess = await Lib.fetchData_cms({
+      service: 'Members.firstStage',
+      email: email,
+      password: password,
+      captcha_img: captcha,
+      idfa: IDFA
+    })
     if (isStepOneSuccess.data === 'succeed') {
       handleSteps('StepTwo')
     } else {
-      setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + isStepOneSuccess.ret }))
-      return handleInvildState('email', 'errorMsg-email')
+      switch (isStepOneSuccess.ret) {
+        case 404:
+          setErrorMsg(prevState => ({ ...prevState, verificationCode: '客戶中心接口錯誤代碼' + isStepOneSuccess.ret }))
+          return handleInvildState('verificationCode', 'errorMsg-verificationCode')
+        default:
+          setErrorMsg(prevState => ({ ...prevState, email: '客戶中心接口錯誤代碼' + isStepOneSuccess.ret }))
+          return handleInvildState('email', 'errorMsg-email')
+      }
     }
   }
 
@@ -290,9 +264,10 @@ const Register = (props) => {
   }, [countdown, startCountDown]);
 
   useEffect(() => {
-    getCaptcha()
+    dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
     handleSteps('StepOne')
-  }, [props])
+    getCaptcha()
+  }, [])
 
   return (
     <div className='bg-blue text-white' style={{ height: '100vh' }}>

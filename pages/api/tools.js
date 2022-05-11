@@ -9,8 +9,8 @@ export default async function handler(req, res) {
       ...req.query
     }
     let result = await axios.get(`${API}/tools`, { params: params, headers: { token: req.headers.token } })
-    res.status(200).json(result.data)
+    return res.status(200).json(result.data)
   } catch (error) {
-    res.status(500).json(error)
+    return res.status(200).json({ ret: 500, msg: 'Internal Server Error' })
   }
 }
