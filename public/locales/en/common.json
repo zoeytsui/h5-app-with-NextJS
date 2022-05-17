@@ -202,5 +202,7 @@
   "歷史成交": "Excuted orders",
   "請選擇日期": "Please select a date",
   "確定": "Confirm",
-  "重置": "Reset"
+  "重置": "Reset",
+  "新設密碼與原密碼相同": "The new password is the same as the original password",
+  "立即入金": "Deposit Now"
 }

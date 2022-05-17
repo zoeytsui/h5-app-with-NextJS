@@ -42,14 +42,15 @@ const sysPlatform = () => {
  */
 const getInfo = () => {
   if (typeof window !== 'undefined') {
-    let info = { token: 'cdb2f5dd5aca15c8a1225b32c210078d', idfa: 'idfa' }
-    if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return info
-    switch (sysPlatform()) {
-      case 'ios':
-        return info = window.webkit.messageHandlers.getInfo.postMessage()
-      case 'android':
-        return info = uiObject.getInfo()
-    }
+    let info;
+    if (typeof uiObject !== 'undefined' || (window.webkit && window.webkit.messageHandlers) !== undefined) {
+      switch (sysPlatform()) {
+        case 'ios':
+          return info = JSON.parse(window.webkit.messageHandlers.getInfo.postMessage())
+        case 'android':
+          return info = JSON.parse(uiObject.getInfo())
+      }
+    } else return info = { token: '522a830aff04fb7bab2e142da06d67a0', idfa: 'idfa' }
   }
 }
 
@@ -63,11 +64,17 @@ const getInfo = () => {
  */
 const pushView = (pageCode) => {
   if (typeof window !== 'undefined') {
-    if (typeof uiObject === 'undefined' || (window.webkit && window.webkit.messageHandlers) === undefined) return;
-    if (sysPlatform() == 'ios') {
-      return window.webkit.messageHandlers.pushView.postMessage(pageCode)
+    console.log(`sysPlatform ${sysPlatform()}`);
+    if (typeof uiObject !== 'undefined' || (window.webkit && window.webkit.messageHandlers) !== undefined) {
+      switch (sysPlatform()) {
+        case 'ios':
+          return window.webkit.messageHandlers.pushView.postMessage(pageCode)
+        case 'android':
+          return uiObject.pushView(pageCode)
+      }
     } else {
-      return uiObject.pushView(pageCode)
+      console.log(`typeof uiObject !== 'undefined' ${typeof uiObject !== 'undefined'}`);
+      console.log(`(window.webkit && window.webkit.messageHandlers) !== undefined ${(window.webkit && window.webkit.messageHandlers) !== undefined}`);
     }
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next'
@@ -170,9 +171,9 @@ const Register = (props) => {
     setNextBtnDisabled(true)
 
     // 驗證碼若不正確
-    if (verificationCode !== captcha) {
-      return handleInvildState('verificationCode', 'errorMsg-verificationCode')
-    }
+    // if (verificationCode !== captcha) {
+    //   return handleInvildState('verificationCode', 'errorMsg-verificationCode')
+    // }
 
     // 檢查郵箱是否註冊
     let checkEmailResult = await Lib.fetchData_cms({
@@ -264,9 +265,14 @@ const Register = (props) => {
   }, [countdown, startCountDown]);
 
   useEffect(() => {
+    if (IDFA !== '') {
+      getCaptcha()
+    }
+  }, [IDFA])
+
+  useEffect(() => {
     dispatch({ type: 'ADD_INFO', payload: Lib.getInfo() })
     handleSteps('StepOne')
-    getCaptcha()
   }, [])
 
   return (

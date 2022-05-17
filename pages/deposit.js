@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from 'react'
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { i18n, useTranslation } from 'next-i18next'
@@ -206,7 +207,7 @@ const Deposit = (props) => {
         service: 'deposit.getdl',
         deviceType: 'MobileSwitch'
       }
-      switch (locale) {
+      switch (i18n.language) {
         case 'tc':
           params.lang = 'Tw'
           break;
